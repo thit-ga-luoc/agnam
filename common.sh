@@ -14,7 +14,7 @@ string_is_null(){
         FUNC_NAME=$2
         STORY=$3  ## STORY_NAME or STORY_URL or comment
         if [ -z "$STRING" ];then
-            echo "$STORY - Failed on : $FUNC_NAME"
+            echo "[INFO] $STORY - Failed on : $FUNC_NAME"
             exit
         fi
 }
@@ -24,7 +24,7 @@ file_is_blank(){
         FUNC_NAME=$2
         STORY=$3  ## STORY_NAME or STORY_URL or comment
         if [ ! -s "$FILE_PATH" ];then
-            echo "$STORY - Failed on : $FUNC_NAME"
+            echo "[INFO]  $STORY - Failed on : $FUNC_NAME"
             exit
         fi
 }
@@ -59,6 +59,7 @@ get_story_name() {
 }
 
 
+
 ############ Complex funtions  ############
 
 get_chapter_list(){
@@ -88,7 +89,6 @@ get_page_list(){
     rm -f $CurlResult
 }
 
-
 ######### Funtions for DOWNLOAD  #########
 chapter_download_overwrite(){
     while read PAGE
@@ -114,7 +114,7 @@ chapter_download_using_page_list(){
     START_PAGE=${5:-1}
 
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ; then
-        echo "Null INPUT" && exit
+        echo "[INFO] You are missing one of parameters " && exit
     fi
 
     get_story_name "$STORY_URL"
