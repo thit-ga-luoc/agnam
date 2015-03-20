@@ -5,7 +5,7 @@ source common.sh
 
 ## Trick
 # a_command || b_command : b_command will be executed when a_command FAILED
-# a_command || b_command : b_command will be executed when a_command SUCCEEDED
+# a_command && b_command : b_command will be executed when a_command SUCCEEDED
 # ${STORY_NAME,,}  : Lower case $STORY_NAME (case insensitive)
 
 ## Not use now
@@ -33,4 +33,5 @@ VAR="$#"  ## Number of parameter
     done
 }
 
-mark_as_finished $*
+#mark_as_finished $*
+###UP

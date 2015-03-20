@@ -3,7 +3,7 @@
 
 ChapterList=$2
 
-cat $1  | hxnormalize -x | hxselect "#list-chapters" | hxunent|
+hxnormalize -x $1 | hxselect "#list-chapters" | hxunent|
 tr '\n' ' ' | sed -re 's/<span class="title"/\n/g' |
 grep -Po "<a href=\"\/truyen.*?\">" |
 sed 's#.*href="/truyen#http://blogtruyen.com/truyen#g' |

@@ -1,5 +1,6 @@
 #!/bin/sh
 ####### Check double domain for 3T ######## IN : temp1  #### OUT : output2
+PageList=$2
         blogspot=$(cat $temp1 | grep -i 'slides_page_url_path' | grep http  | sed -re 's/(.*)\["//g' | sed 's/"\];//g' | sed 's/","/\n/g') #blogspot
         tttuan=$(cat $temp1 | grep -i 'slides_page_path' | grep http  | sed -re 's/(.*)\["//g' | sed 's/"\];//g' | sed 's/","/\n/g' )    #truyentranhtuan => sort
         if [ ! -z "$tttuan" ]; then
