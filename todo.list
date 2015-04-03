@@ -1,0 +1,28 @@
+search for duplicate STORY_URL or STORY_NAME in ChapterList
+
+Test script
+#!/bin/bash
+export PATH='/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin'
+source environment.sh
+source common.sh
+
+STORY_URL=$1
+get_story_name "$STORY_URL"
+get_chapter_list "$STORY_URL"
+
+while read CHAPTER
+do
+	CHAPTER_NUMBER=$( echo $CHAPTER | awk '{print $1}' | sed 's/#//g' )
+	CHAPTER_URL=$( echo $CHAPTER | awk '{print $2}' )
+	echo $CHAPTER_URL
+	curl --silent  $CHAPTER_URL > $CurlResult
+	cat $CurlResult | grep -Eo "slides_page_.{0,40}"
+	echo
+	echo "---------------------------------------------------------------------------------"
+	echo
+done < $ChapterList
+
+
+1.search for another site if chapter failed on downloaded site
+2. Check for lastest chapter
+3. Redownload error - Site
