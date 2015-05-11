@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 export PATH='/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin'
-source Environment.sh
+#source Environment.sh
 source Common.sh
 
 ### Always use $1 as OPTS
@@ -9,89 +9,98 @@ source Common.sh
 #OPTS=$1
 
 download_full_story(){
-    STORY_URL=$1
+    local STORY_URL=$1
     story_var_init "$STORY_URL"
-    echo -n > $WgetLog/$SiteURL-$STORY_NAME  # Purge wget_log everytime down a story
-
+    echo -n > $WgetLog/$SiteURL-$STORY_NAME  # Purge wget_log everytime download a story
+    local CHAPTER
     while read CHAPTER
     do
-        CHAPTER_NUMBER=$( echo $CHAPTER | awk '{print $1}' | sed 's/#//g' )
-        CHAPTER_URL=$( echo $CHAPTER | awk '{print $2}' )
-        get_page_list  "$CHAPTER_URL"  "$SiteURL"
-        chapter_download_using_page_list "$PageList" "$CHAPTER_NUMBER"
-        [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $PageList
+        if [ "$MOVE_TO_IMG_MODE" == "Force" ] || [ -z "$(cat $MoveToImgDirList | grep "$USTORAGE/$STORY_NAME/chapter-$CHAPTER_NAME$")" ] ; then
+            CHAPTER_NAME=$( echo $CHAPTER | awk '{print $1}' | sed 's/#//g' )
+            CHAPTER_URL=$( echo $CHAPTER | awk '{print $2}' )
+            get_page_list  "$CHAPTER_URL"  "$SiteURL"
+            chapter_download_using_page_list "$PageList" "$CHAPTER_NAME"
+            [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $PageList
+        else
+            echo_color "$color_RED" "[INFO][$(date +"%y%m%d.%H%M%S")]$USTORAGE/$STORY_NAME/chapter-$CHAPTER_NAME is already on \$MoveToImgDirList"  | tee -a $ErrorLog
+        fi
     done < $ChapterList
+    echo stoken >  $SAVE_TO/stoken
     [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $ChapterList
 }
 
 # story_var_init "$STORY_URL"
 download_single_chapter(){
-    CHAPTER_NUMBER=$1
-    START_PAGE=${2:-1}
+    local CHAPTER_NAME=$1
+    local START_PAGE=${2:-1}
 
-#    story_var_init "$STORY_URL"   => REMOVE TO PREVENT REPEAT
-
-    CHAPTER_URL="$(cat $ChapterList | grep "^#$CHAPTER_NUMBER#" | awk '{print $2}' )"
+    local CHAPTER_URL="$(cat $ChapterList | grep "^#$CHAPTER_NAME#" | awk '{print $2}' )"
     if [ -z "$CHAPTER_URL" ]; then
-        echo "[INFO] $STORY_URL : Chapter number ($CHAPTER_NUMBER) is invalid"
+        echo "[INFO][$(date +"%y%m%d.%H%M%S")]$STORY_URL : Chapter number ($CHAPTER_NAME) is invalid" | tee -a $ErrorLog
         [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $ChapterList
-        exit
+        continue
+        #[ "$EXIT_ON_ERROR" == "True" ] && exit
     fi
     get_page_list  "$CHAPTER_URL"  "$SiteURL"
-    chapter_download_using_page_list "$PageList" "$CHAPTER_NUMBER" "$START_PAGE"
+    if [ ! -s "$PageList" ]; then
+        echo_color "$color_RED" "[INFO][$(date +"%y%m%d.%H%M%S")] $STORY_NAME chapter-$CHAPTER_NAME PageList is Null"
+        continue
+    fi
+    chapter_download_using_page_list "$PageList" "$CHAPTER_NAME" "$START_PAGE"
     [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $ChapterList $PageList
 }
 
 #download_single_chapter_external_file()
 
+### Must be improved
 download_single_page(){
-    STORY_URL=$1
-    CHAPTER_NUMBER=$2
-    PAGE_NUMBER=$3
+    local STORY_URL=$1
+    local CHAPTER_NAME=$2
+    local PAGE_NAME=$3
     story_var_init "$STORY_URL"
-    PAGE_URL="$TempDir/PAGE_URL-$(openssl rand -hex 10)"
-    CHAPTER_URL="$(cat $ChapterList | grep "^#$CHAPTER_NUMBER#" | awk '{print $2}' )"
-    string_is_null "$CHAPTER_URL"  "Chapter $CHAPTER_NUMBER is invalid"  "$STORY_URL"
+    PageList="$TempDir/PageList-$(openssl rand -hex 10)"
+    local CHAPTER_URL="$(cat $ChapterList | grep "^#$CHAPTER_NAME#" | awk '{print $2}' )"
+    string_is_null "$CHAPTER_URL"  "Chapter $CHAPTER_NAME is invalid"  "$STORY_URL"
 
-    # [ -d "$SAVE_TO/chapter-$CHAPTER_NUMBER"  ] &&
-    OLDSiteURL="$(ls $SAVE_TO/chapter-$CHAPTER_NUMBER | grep "ctoken" | sed 's/ctoken\.//g')"
+    # [ -d "$SAVE_TO/chapter-$CHAPTER_NAME"  ] &&
+    OLDSiteURL="$( [ -d "$SAVE_TO/chapter-$CHAPTER_NAME" ] && ls $SAVE_TO/chapter-$CHAPTER_NAME | grep "ctoken" | sed 's/ctoken\.//g')"
     if [ "$SiteURL" != "$OLDSiteURL" ];then
         get_domain_long_name "$STORY_NAME" "$OLDSiteURL"
-        echo "[INFO] $STORY_NAME : Chapter number ($CHAPTER_NUMBER) was downloaded from $STORY_URL"
-        exit
+        echo "[INFO][$(date +"%y%m%d.%H%M%S")]$STORY_NAME : Chapter number ($CHAPTER_NAME) was downloaded from $STORY_URL" | tee -a $ErrorLog
+        [ "$EXIT_ON_ERROR" == "True" ] && exit
     fi
 
     if [ -z "$CHAPTER_URL" ]; then
-        echo "[INFO] $STORY_URL : Chapter number ($CHAPTER_NUMBER) is invalid"
+        echo "[INFO][$(date +"%y%m%d.%H%M%S")]$STORY_URL : Chapter number ($CHAPTER_NAME) is invalid" | tee -a $ErrorLog
         [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $ChapterList
-        exit
+        [ "$EXIT_ON_ERROR" == "True" ] && exit
     fi
 
     get_page_list  "$CHAPTER_URL"  "$SiteURL"
     ### check ctoken.$SiteURL
 
-    cat $PageList | sed -n "$PAGE_NUMBER p" > "$PAGE_URL"
+    cat $PageList | sed -n "$PAGE_NAME p" > "$PageList"
 
-    if [ ! -s "$PAGE_URL" ]; then
-        echo "[INFO] $STORY_URL - Chapter ($CHAPTER_NUMBER) : Page number ($PAGE_NUMBER) is invalid"
-        [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $ChapterList  $PAGE_URL
-        exit
+    if [ ! -s "$PageList" ]; then
+        echo "[INFO][$(date +"%y%m%d.%H%M%S")]$STORY_URL - Chapter ($CHAPTER_NAME) : Page number ($PAGE_NAME) is invalid" | tee -a $ErrorLog
+        [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $ChapterList  $PageList
+        [ "$EXIT_ON_ERROR" == "True" ] && exit
     fi
 
-    chapter_download_using_page_list "$PAGE_URL" "$CHAPTER_NUMBER"  "$PAGE_NUMBER"
+    chapter_download_using_page_list "$PageList" "$CHAPTER_NAME"  "$PAGE_NAME"
 }
 
 
 
 download_stage_verify(){
-    STORY_NAME=$1
-    CHAPTER_NUMBER=$2
-    TRY=3
+    local STORY_NAME=$1
+    local CHAPTER_NAME=$2
+    local TRY=5
 
     while [ "$TRY" -gt 0 ]
     do
         echo "------------------ Try at $TRY  ------------------"
-        verify_page_is_null  "$STORY_NAME" "$2"
+        verify_page_is_null  "$STORY_NAME" "$CHAPTER_NAME"
         if [ -s "$PageIsNullList" ]; then
             download_from_wget_log "$PageIsNullList"
             chmod +x $DownloadFromWgetLogList
@@ -100,7 +109,7 @@ download_stage_verify(){
             [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $DownloadFromWgetLogList
             let TRY=$TRY-1
         else
-            echo "There is no PageIsNull"
+            echo "There is no PageIsNull" 
             TRY=0
         fi
         [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $PageIsNullList
@@ -118,15 +127,15 @@ download_from_wget_log(){
 
     while read LINE
     do
-        CHAPTER_ERROR=$(echo $LINE | awk '{print $1}')
-        PAGE_ERROR=$(echo $LINE | awk '{print $2}')
+        local CHAPTER_ERROR=$(echo $LINE | awk '{print $1}')
+        local PAGE_ERROR=$(echo $LINE | awk '{print $2}')
         [ "$PAGE_ERROR" ] || PAGE_ERROR=".*"  # In case of PAGE_ERROR is NULL : Select ALL page in CHAPTER_ERROR
         cat $WgetLog/$SiteURL-$STORY_NAME | grep "xkdchap=$CHAPTER_ERROR=knspos=$PAGE_ERROR=@" >> $DownloadFromWgetLogList
     done < $ErrorList
     cat $DownloadFromWgetLogList | sort -V | uniq > $ErrorList
     cat $ErrorList > $DownloadFromWgetLogList
     [ "$DELETE_TEMP_FILES" == "True" ] && rm -f $ErrorList
-    echo "$DownloadFromWgetLogList"
+    [ "$ENABLE_ECHO" == "True" ] && echo_color "$color_LIGHT_PURPLE" "$DownloadFromWgetLogList"
 }
 
 
@@ -136,14 +145,15 @@ download_from_wget_log(){
 download_remove_first_last_null_page(){
     RemoveFirstLastNullPageList="$TempDir/RemoveFirstLastNullPageList-$(openssl rand -hex 10)"
     cat $PageIsNullList | grep -v "^$" | awk '{print $1}' | uniq > $RemoveFirstLastNullPageList
-    while read CHAPTER
+    local CHAPTER_NAME
+    while read CHAPTER_NAME
     do
 
-        FIRST=$(find  $SAVE_TO/"chapter-"$CHAPTER/* -type f | grep "_1\." )
-        [ "$(cat $SAVE_TO/"chapter-"$CHAPTER/ctoken* | grep "LastPageRemoved" | uniq )" ] || LAST=$( find  $SAVE_TO/"chapter-"$CHAPTER/* -type f | grep -v "ctoken" | sort -V | tail -n1)
+        local FIRST=$(find  $SAVE_TO/"chapter-"$CHAPTER_NAME/* -type f | grep "_1\." )
+        [ "$(cat $SAVE_TO/"chapter-"$CHAPTER_NAME/cprofile | grep "LastPageRemoved" | uniq )" ] || local LAST=$( find  $SAVE_TO/"chapter-"$CHAPTER_NAME/* -type f | grep -v "ctoken" | sort -V | tail -n1)
 
         [ ! -s "$FIRST" ] && rm -rfv $FIRST | tee -a
-        [ ! -s "$LAST"  ] && rm -rfv $LAST | tee -a && echo "LastPageRemoved" >>  $SAVE_TO/"chapter-"$CHAPTER/ctoken*
+        [ ! -s "$LAST"  ] && rm -rfv $LAST | tee -a && echo "LastPageRemoved" >>  $SAVE_TO/"chapter-"$CHAPTER_NAME/cprofile
     done < $RemoveFirstLastNullPageList
 }
 

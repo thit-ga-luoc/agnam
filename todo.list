@@ -1,10 +1,16 @@
+chapter_info = "%s,%s %s" % (CHAPTER_NAME, CHAPTER_URL, chapter_info)
+
+## Trick
+# a_command || b_command : b_command will be executed when a_command FAILED
+# a_command && b_command : b_command will be executed when a_command SUCCEEDED
+
+# ${STORY_NAME,,}  : Lower case $STORY_NAME (case insensitive)
+
+# ls  chapter-1/ | sort -V | grep  -v ctoken | awk 'NR==1; END{print}'  =>  grep the first and the last result from command
+
 search for duplicate STORY_URL or STORY_NAME in ChapterList
 
-Test script
-#!/bin/bash
-export PATH='/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin'
-source environment.sh
-source common.sh
+$(date +"%y%m%d.%H%M%S")
 
 STORY_URL=$1
 get_story_name "$STORY_URL"
@@ -12,7 +18,7 @@ get_chapter_list "$STORY_URL"
 
 while read CHAPTER
 do
-	CHAPTER_NUMBER=$( echo $CHAPTER | awk '{print $1}' | sed 's/#//g' )
+	CHAPTER_NAME=$( echo $CHAPTER | awk '{print $1}' | sed 's/#//g' )
 	CHAPTER_URL=$( echo $CHAPTER | awk '{print $2}' )
 	echo $CHAPTER_URL
 	curl --silent  $CHAPTER_URL > $CurlResult
@@ -22,7 +28,107 @@ do
 	echo
 done < $ChapterList
 
+NEW Feature
+DONE 1.verify_prerun_download_story => Must sure the html parser not error before download story/chapter/update
+DONE 2.blogtruyen.py line 71  str*(Chapter_name) - Fix loi unicode error
+3.search for another site if chapter failed on downloaded site
+4.update abnormal story
+5.optimize update/ normal-abnormal filter
+DONE  6.Color output for errorlog
+7. Exclude list for html parser
+8. download-story : resume from chapter xxx
+find /xxxxxxxxx -type f -mtime +30 | xargs rm -f
+9. download-chapter : check chapter on $MoveToImgDirList before downloading
 
 1.search for another site if chapter failed on downloaded site
-2. Check for lastest chapter
+DONE  2. Check for lastest chapter
 3. Redownload error - Site
+4. rename conde-konma => conde-koma
+5. Fixed vechai crawler => Verify again
+6. make Import_db log
+7. make move to www/image log
+DONE 8. Fix local variable
+9. cat ProjectList | grep "$STORY_NAME" : more than 1 result
+10. Exit on error
+
+
+
+
+fix chaptername : good-ending : Shot
+    vuong-phong-loi-i : END => 60
+    onepunch-man : special - bonus
+    Dragons-Son-Changsik
+    truyen-tranh-hai
+    conde-konma/chapter-118
+    hinh-anh-hai-huoc/chapter-33
+    http://vechai.info/Elfen-Lied/
+    /Data/www/images/o-long-vien-2/chapter-63
+/Data/www/images/one-piece/chapter-769
+/Data/www/images/into-the-forest-of-fireflies-light/chapter-1  => manually create md5sum - this story maybe ended
+
+
+
+
+
+Token chain:
+Utils.sh/mark_as_finished   => Mongo
+download_single_page        => Downloading
+download_remove_first_last_null_page   => Downloading   STOKEN
+verify_page_is_low_quality   => Downloading
+verify_page_per_chapter     => Downloading
+verify_missing_chapter_storyurl    => Downloading
+chapter_download_overwrite  => Downloading
+
+
+
+#number_list_parser "$1"
+#mark_as_finished $*
+###UP
+
+#get_storyname_or_storyurl(){
+#    STORY=$1
+#    if [ "$(echo $story | grep "http" )" ]; then
+#        get_story_name "$STORY"
+#    else
+#        get_domain_long_name "$STORY"
+#    fi
+#}
+############ Verification ############
+./Main.sh import_chapter_to_db  import chapter normal old import-db.list
+
+[10:55:17 PM] Hung Cao: [root@100.21 update-normal]#echo end > /Data/www/images/dragon-ball/stoken
+[root@100.21 update-normal]#echo end > /Data/www/images/guardian-dog/stoken
+[root@100.21 update-normal]#echo end > /Data/www/images/hiatari-ryoukou/stoken
+[root@100.21 update-normal]#echo end > /Data/www/images/kurohime/stoken
+[root@100.21 update-normal]#echo end > /Data/www/images/merupuri/stoken
+[root@100.21 update-normal]#echo end > /Data/www/images/nine/stoke
+
+Example:
+
+filter_do_add(){
+    local STORY_NAME=$1
+    local CHAPTER_NAME=$2
+    local LIST=$3 # AbnormalStoryList  NormalStoryList
+    eval LIST=\$$LIST        # Indirect Reference : http://tldp.org/LDP/abs/html/ivr.html
+    if [ -z "$(cat $LIST | grep "^$STORY_NAME*\s")" ];then
+        cat $ProjectList | grep "^$STORY_NAME*\s" >> $LIST
+        echo "[$(date +"%D#%T")] [$LIST]  \"$STORY_NAME\" - Last success chapter :  $CHAPTER_NAME" | tee -a $StoryFilteredList
+    fi
+}
+
+
+http://blogtruyen.com/truyen/ansatsu-kyoushitsu
+
+FIXED : ansatsu-kyoushitsu : Double chapter 122 : can't find chapter-122 http://truyentranhtuan.com/ansatsu-kyoushitsu/
+FIXED : huyen-thanh         http://truyentranhtuan.com/huyen-thanh/
+FIXED : great-teacher-onizuka       => add str(CHAPTER_NAME) to line 37 html-paser-blogtr.py  => Story is finished
+http://truyentranhtuan.com/great-teacher-onizuka/
+
+FIXED : into-the-forest-of-fireflies-light  => Da hoan thanh
+
+conde-konma
+
+kenichi  => download again http://truyentranhtuan.com/historys-strongest-disciple-kenichi/
+kingdom  => using ttt instead of blogtruyen : remove mongo + download chapter 405
+
+
